@@ -47,7 +47,7 @@ class ReminderListFragment : BaseFragment() {
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
         super.onViewCreated(view, savedInstanceState)
-        binding.lifecycleOwner = this
+        binding.lifecycleOwner = viewLifecycleOwner
         setupRecyclerView()
         binding.addReminderFAB.setOnClickListener {
             navigateToAddReminder()
