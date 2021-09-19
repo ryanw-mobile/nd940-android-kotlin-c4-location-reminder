@@ -24,12 +24,9 @@ class AuthenticationActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         binding = DataBindingUtil.setContentView(this, R.layout.activity_authentication)
-
-        // Implement the create account and sign in using FirebaseUI, use sign in using email and sign in using Google
-        // If the user was authenticated, send him to RemindersActivity
-        observeAuthenticationState()
-
         binding.buttonLogin.setOnClickListener { launchFirebaseLogin() }
+
+        observeAuthenticationState()
     }
 
     private fun launchFirebaseLogin() {
@@ -52,15 +49,13 @@ class AuthenticationActivity : AppCompatActivity() {
 
     /**
      * Observes the authentication state and changes the UI accordingly.
-     * If there is a logged in user: (1) show a logout button and (2) display their name.
-     * If there is no logged in user: show a login button
+     * If there is a logged in user: immediately navigate to the Reminders screen
      */
     private fun observeAuthenticationState() {
         authenticationViewModel.authenticationState.observe(this, Observer { authenticationState ->
             if (authenticationState == AUTHENTICATED) {
                 // Upon successful login, navigate the user to the Reminders screen
-                // Remainder screen terminated when navigating to this screen, 
-                // therefore we cannot use back.
+                // Flags used to prevent the back button from bringing users back to this screen
                 val intent = Intent(this, RemindersActivity::class.java)
                 intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
                 startActivity(intent)
