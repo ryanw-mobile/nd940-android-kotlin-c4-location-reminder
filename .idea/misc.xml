@@ -5,6 +5,11 @@
       <map>
         <entry key="app/src/main/res/layout/activity_authentication.xml" value="0.2734375" />
         <entry key="app/src/main/res/layout/activity_reminder_description.xml" value="0.2734375" />
+        <entry key="app/src/main/res/layout/activity_reminders.xml" value="0.23233695652173914" />
+        <entry key="app/src/main/res/layout/fragment_reminders.xml" value="0.2734375" />
+        <entry key="app/src/main/res/layout/fragment_save_reminder.xml" value="0.2734375" />
+        <entry key="app/src/main/res/layout/fragment_select_location.xml" value="0.2734375" />
+        <entry key="app/src/main/res/menu/main_menu.xml" value="0.2734375" />
       </map>
     </option>
   </component>
