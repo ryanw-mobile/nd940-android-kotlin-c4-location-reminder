@@ -1,13 +1,14 @@
 package com.udacity.project4.locationreminders.reminderslist
 
+import android.content.Intent
 import android.os.Bundle
 import android.view.*
 import androidx.databinding.DataBindingUtil
 import androidx.fragment.app.viewModels
 import androidx.lifecycle.Observer
-import androidx.navigation.Navigation
 import com.firebase.ui.auth.AuthUI
 import com.udacity.project4.R
+import com.udacity.project4.authentication.AuthenticationActivity
 import com.udacity.project4.authentication.AuthenticationViewModel
 import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.base.NavigationCommand
@@ -105,10 +106,10 @@ class ReminderListFragment : BaseFragment() {
                 if (authenticationState != AuthenticationViewModel.AuthenticationState.AUTHENTICATED) {
                     // This App requires login to use. If at any moment it is not logged in,
                     // we have to redirect the user to the AuthenticationActivity
-                    Navigation.findNavController(binding.root)
-                        .navigate(R.id.action_reminderListFragment_to_authenticationActivity)
+                    val intent = Intent(requireContext(), AuthenticationActivity::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
                 }
             })
     }
-
 }
