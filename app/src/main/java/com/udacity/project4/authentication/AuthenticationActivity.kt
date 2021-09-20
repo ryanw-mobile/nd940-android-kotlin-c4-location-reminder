@@ -43,6 +43,8 @@ class AuthenticationActivity : AppCompatActivity() {
             AuthUI.getInstance()
                 .createSignInIntentBuilder()
                 .setAvailableProviders(providers)
+                .setLogo(R.drawable.map)
+                .setTheme(R.style.AppTheme)
                 .build()
         )
     }
