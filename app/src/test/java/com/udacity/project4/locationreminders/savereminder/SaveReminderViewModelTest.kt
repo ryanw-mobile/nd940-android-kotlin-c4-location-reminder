@@ -1,10 +1,9 @@
 package com.udacity.project4.locationreminders.savereminder
 
-import android.content.Context
+import android.app.Application
 import androidx.arch.core.executor.testing.InstantTaskExecutorRule
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
-import androidx.test.platform.app.InstrumentationRegistry
 import com.udacity.project4.R
 import com.udacity.project4.locationreminders.data.FakeDataSource
 import com.udacity.project4.locationreminders.data.dto.ReminderDTO
@@ -29,7 +28,7 @@ class SaveReminderViewModelTest {
     // Use a fake repository to be injected into the viewmodel
     private lateinit var dataSource: FakeDataSource
 
-    private lateinit var context: Context
+    private lateinit var applicationContext: Application
 
     // Request to execute all background tasks synchronously under the same thread
     @get:Rule
@@ -37,11 +36,11 @@ class SaveReminderViewModelTest {
 
     @Before
     fun setupViewModel() {
-        context = InstrumentationRegistry.getInstrumentation().getTargetContext();
+        applicationContext = ApplicationProvider.getApplicationContext()
         // Given a fresh ViewModel
         val remindersList = mutableListOf<ReminderDTO>()
         dataSource = FakeDataSource(remindersList)
-        viewModel = SaveReminderViewModel(ApplicationProvider.getApplicationContext(), dataSource)
+        viewModel = SaveReminderViewModel(applicationContext, dataSource)
         stopKoin()
     }
 
@@ -57,7 +56,10 @@ class SaveReminderViewModelTest {
             -0.1487444
         )
         viewModel.validateAndSaveReminder(reminder)
-        assertThat(viewModel.showToast.value, `is`(context.getString(R.string.reminder_saved)))
+        assertThat(
+            viewModel.showToast.value,
+            `is`(applicationContext.getString(R.string.reminder_saved))
+        )
     }
 
     @Test
@@ -70,7 +72,10 @@ class SaveReminderViewModelTest {
             -0.1487444
         )
         viewModel.validateAndSaveReminder(reminder)
-        assertThat(viewModel.showToast.value, `is`(context.getString(R.string.reminder_saved)))
+        assertThat(
+            viewModel.showToast.value,
+            `is`(applicationContext.getString(R.string.reminder_saved))
+        )
     }
 
     @Test
@@ -83,7 +88,10 @@ class SaveReminderViewModelTest {
             -0.1487444
         )
         viewModel.validateAndSaveReminder(reminder)
-        assertThat(viewModel.showToast.value, `is`(context.getString(R.string.reminder_saved)))
+        assertThat(
+            viewModel.showToast.value,
+            `is`(applicationContext.getString(R.string.reminder_saved))
+        )
     }
 
     @Test
