@@ -73,6 +73,28 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
      */
     override fun onMapReady(googleMap: GoogleMap) {
         map = googleMap
+        setMapStyle(map)
+    }
+
+    private fun setMapStyle(map: GoogleMap) {
+        try {
+            // Customize the styling of the base map using a JSON object defined
+            // in a raw resource file.
+            val success = map.setMapStyle(
+                MapStyleOptions.loadRawResourceStyle(
+                    requireContext(),
+                    R.raw.map_styles
+                )
+            )
+
+            if (!success) {
+                Log.e(TAG, "Style parsing failed.")
+            }
+        } catch (ex: Resources.NotFoundException) {
+            Log.e(TAG, "Can't find style. Error: ", ex)
+        }
+    }
+    }
     }
     private fun onLocationSelected() {
         //        TODO: When the user confirms on the selected location,
