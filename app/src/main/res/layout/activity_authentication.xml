@@ -21,10 +21,7 @@
 
         <Button
             android:id="@+id/button_login"
-            style="@style/Widget.AppCompat.Button.Colored"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:minHeight="@dimen/fui_min_height_target"
+            style="@style/FullWidthButton"
             android:text="@string/login"
             app:layout_constraintBottom_toBottomOf="parent"
             app:layout_constraintEnd_toEndOf="parent"
