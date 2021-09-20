@@ -24,6 +24,7 @@ import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
+import kotlin.math.roundToInt
 
 class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
@@ -35,8 +36,6 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     // Temporary location selection - only copied to ViewModel when save button is clicked
     var selectedPoi: PointOfInterest? = null
-    var selectedLat: Double = 0.0
-    var selectedLng: Double = 0.0
 
     //Use Koin to get the view model of the SaveReminder
     override val _viewModel: SaveReminderViewModel by inject()
@@ -110,9 +109,10 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
             )
 
-            selectedLat = latLng.latitude
-            selectedLng = latLng.longitude
-            selectedPoi = null
+            // We may use geolocation lookup for a more meaningful place name
+            // but for now we just try to have something simple as its name
+            val customPoiName = "${latLng.latitude.roundToInt()}, ${latLng.longitude.roundToInt()}"
+            selectedPoi = PointOfInterest(latLng, customPoiName, customPoiName)
             binding.buttonSave.isEnabled = true
         }
     }
@@ -128,8 +128,6 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                     .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_RED))
             )
 
-            selectedLat = poi.latLng.latitude
-            selectedLng = poi.latLng.longitude
             selectedPoi = poi
             binding.buttonSave.isEnabled = true
         }
@@ -207,16 +205,17 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     }
 
     /**
-     *  When the user confirms on the selected location,
+     * When the user confirms on the selected location,
      * send back the selected location details to the view model
      * and navigate back to the previous fragment to save the reminder and add the geofence
      */
     private fun onLocationSelected() {
-        _viewModel.latitude.value = selectedLat
-        _viewModel.latitude.value = selectedLng
+        _viewModel.latitude.value = selectedPoi!!.latLng.latitude
+        _viewModel.longitude.value = selectedPoi!!.latLng.longitude
+        _viewModel.reminderSelectedLocationStr.value = selectedPoi!!.name
         _viewModel.selectedPOI.value = selectedPoi
 
-        findNavController().navigateUp()
+        findNavController().popBackStack()
     }
 
 
