@@ -42,7 +42,7 @@ class RemindersDaoTest {
     // Here I just do a set of CRUD tests.
 
     @Test
-    fun saveReminderAndGetReminderById() = runBlockingTest {
+    fun saveReminder_getReminderById_returnsSuccess() = runBlockingTest {
         // GIVEN - save a reminder. (Create and Read test)
         val reminder = ReminderDTO(
             "Reminder Title A",
@@ -68,7 +68,7 @@ class RemindersDaoTest {
     }
 
     @Test
-    fun updateReminderAndGetReminderById() = runBlockingTest {
+    fun updateReminder_getReminderById_returnsSuccess() = runBlockingTest {
         // GIVEN - save and then update a reminder. (update test)
         val reminder = ReminderDTO(
             "Reminder Title A",
@@ -104,12 +104,21 @@ class RemindersDaoTest {
     }
 
     @Test
-    fun deleteAllReminderAndGetReminderById() = runBlockingTest {
+    fun deleteAllReminder_getReminderById_returnsError() = runBlockingTest {
         // GIVEN - delete all reminder. (Delete test)
+        val reminder = ReminderDTO(
+            "Reminder Title A",
+            "Reminder Description A",
+            "Location",
+            51.4930762,
+            -0.1487444,
+            "titleA"
+        )
+        database.reminderDao().saveReminder(reminder)
         database.reminderDao().deleteAllReminders()
 
         // WHEN - Get the reminder by id from the database.
-        val loaded = database.reminderDao().getReminderById("randomId")
+        val loaded = database.reminderDao().getReminderById(reminder.id)
 
         // THEN - The loaded data contains the expected values.
         assertThat<ReminderDTO>(loaded, `is`(nullValue()))
