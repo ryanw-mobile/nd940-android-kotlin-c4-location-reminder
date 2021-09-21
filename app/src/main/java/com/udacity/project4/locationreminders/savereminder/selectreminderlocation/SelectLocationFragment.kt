@@ -27,6 +27,7 @@ import com.udacity.project4.BuildConfig
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
+import com.udacity.project4.locationreminders.geofence.GeofenceConstants.REQUEST_CODE_LOCATION_PERMISSION
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
@@ -38,7 +39,6 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
 
     // Map related
     private lateinit var map: GoogleMap
-    private val REQUEST_LOCATION_PERMISSION = 1
 
     // Temporary location selection - only copied to ViewModel when save button is clicked
     var selectedPoi: PointOfInterest? = null
@@ -207,7 +207,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                 ActivityCompat.requestPermissions(
                     requireActivity(),
                     arrayOf<String>(Manifest.permission.ACCESS_FINE_LOCATION),
-                    REQUEST_LOCATION_PERMISSION
+                    REQUEST_CODE_LOCATION_PERMISSION
                 )
             }
         }
@@ -221,7 +221,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
                 ActivityCompat.requestPermissions(
                     requireActivity(),
                     arrayOf<String>(Manifest.permission.ACCESS_FINE_LOCATION),
-                    REQUEST_LOCATION_PERMISSION
+                    REQUEST_CODE_LOCATION_PERMISSION
                 )
             }
         builder.create().show()
@@ -258,7 +258,7 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
     ) {
         // Check if location permissions are granted and if so enable the
         // location data layer.
-        if (requestCode == REQUEST_LOCATION_PERMISSION && grantResults.isNotEmpty()) {
+        if (requestCode == REQUEST_CODE_LOCATION_PERMISSION && grantResults.isNotEmpty()) {
             if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                 enableMyLocation()
             } else if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
