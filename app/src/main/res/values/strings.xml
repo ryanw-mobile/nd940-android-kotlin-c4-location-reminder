@@ -41,4 +41,5 @@
     <string name="geofence_too_many_pending_intents">You have provided too many PendingIntents to the addGeofences() call.</string>
     <string name="error_adding_geofence">Error Happened, Can\'t Add Geofence</string>
     <string name="OK">OK</string>
+    <string name="permission_denied_explanation_background">You need to allow location all the time to run this app.</string>
 </resources>
