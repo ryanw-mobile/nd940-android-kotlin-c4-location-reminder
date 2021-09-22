@@ -14,4 +14,11 @@
         <item name="android:minHeight">@dimen/fui_min_height_target</item>
     </style>
 
+    <style name="reminderheading" parent="TextAppearance.MaterialComponents.Subtitle2">
+        <item name="android:layout_width">match_parent</item>
+        <item name="android:layout_height">wrap_content</item>
+        <item name="android:layout_marginTop">@dimen/margin_normal</item>
+        <item name="android:textColor">@color/colorAccent</item>
+    </style>
+
 </resources>
