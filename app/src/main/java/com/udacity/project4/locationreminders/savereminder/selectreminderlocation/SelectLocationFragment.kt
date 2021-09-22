@@ -15,7 +15,6 @@ import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
-import androidx.navigation.fragment.findNavController
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.GoogleMap
@@ -26,6 +25,7 @@ import com.google.android.material.snackbar.Snackbar
 import com.udacity.project4.BuildConfig
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
+import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
 import com.udacity.project4.locationreminders.geofence.GeofenceConstants.REQUEST_CODE_LOCATION_PERMISSION
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
@@ -284,7 +284,9 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
             _viewModel.reminderSelectedLocationStr.value = selectedPoi!!.name
             _viewModel.selectedPOI.value = selectedPoi
 
-            findNavController().popBackStack()
+            _viewModel.navigationCommand.postValue(
+                NavigationCommand.Back
+            )
         } else {
             requestPermissionOrShowRationale(true)
         }
