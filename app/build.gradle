@@ -40,6 +40,10 @@ android {
         dataBinding true
     }
 
+    testOptions {
+        animationsDisabled = true
+    }
+
     packagingOptions {
         // for JNA and JNA-platform
         exclude "META-INF/AL2.0"
