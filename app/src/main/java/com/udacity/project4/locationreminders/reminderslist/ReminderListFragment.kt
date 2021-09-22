@@ -42,6 +42,12 @@ class ReminderListFragment : BaseFragment() {
 
         binding.refreshLayout.setOnRefreshListener { _viewModel.loadReminders() }
 
+        // Starter code comes with a refreshLayout but not properly handle the refreshing animation
+        // Added this as a fix to hide the animation when the refresh is completed.
+        _viewModel.showLoading.observe(viewLifecycleOwner, Observer {
+            binding.refreshLayout.isRefreshing = it
+        })
+
         return binding.root
     }
 
