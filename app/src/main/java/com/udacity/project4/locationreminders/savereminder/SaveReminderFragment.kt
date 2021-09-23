@@ -2,6 +2,7 @@ package com.udacity.project4.locationreminders.savereminder
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.annotation.TargetApi
 import android.app.Activity.RESULT_OK
 import android.app.PendingIntent
 import android.content.Intent
@@ -104,26 +105,24 @@ class SaveReminderFragment : BaseFragment() {
             // This is for Android Q or later.
             // Under SelectRemainderLocation, we have already forced user to grant fine location permission when saving the location
             // Here when user clicks Save, again we need the user to grant background location in order to save this remainder
+            @TargetApi(29)
             when {
-                ContextCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                )
+                ContextCompat.checkSelfPermission(requireContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                         == PackageManager.PERMISSION_GRANTED -> {
                     // You can use the API that requires the permission.
                     checkPermissionStartGeofenceAndSave(reminder)
                 }
-                shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION) -> {
-                    // In an educational UI, explain to the user why your app requires this
-                    // permission for a specific feature to behave as expected. In this UI,
-                    // include a "cancel" or "no thanks" button that allows the user to
-                    // continue using your app without granting the permission.
-                    showRationaleDialog()
-                }
+//                shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION) -> {
+//                    // In an educational UI, explain to the user why your app requires this
+//                    // permission for a specific feature to behave as expected. In this UI,
+//                    // include a "cancel" or "no thanks" button that allows the user to
+//                    // continue using your app without granting the permission.
+//                    showRationaleDialog()
+//                }
                 else -> {
                     // You can directly ask for the permission.
                     // The registered ActivityResultCallback gets the result of this request.
-                    requestBackgroundPermissionPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                    requestBackgroundPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                 }
             }
         }
@@ -150,9 +149,8 @@ class SaveReminderFragment : BaseFragment() {
     // system permissions dialog. Save the return value, an instance of
     // ActivityResultLauncher. You can use either a val, as shown in this snippet,
     // or a lateinit var in your onAttach() or onCreate() method.
-    private val requestBackgroundPermissionPermissionLauncher =
-        registerForActivityResult(
-            ActivityResultContracts.RequestPermission()
+    private val requestBackgroundPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()
         ) { isGranted: Boolean ->
             if (isGranted) {
                 // Permission is granted. Continue the action or workflow in your
