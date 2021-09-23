@@ -2,7 +2,7 @@ package com.udacity.project4.locationreminders.savereminder
 
 import android.Manifest
 import android.annotation.SuppressLint
-import android.annotation.TargetApi
+import android.app.Activity.RESULT_OK
 import android.app.PendingIntent
 import android.content.Intent
 import android.content.IntentSender
@@ -15,7 +15,10 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.Toast
-import androidx.core.app.ActivityCompat
+import androidx.activity.result.IntentSenderRequest
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import com.google.android.gms.common.api.ResolvableApiException
 import com.google.android.gms.location.*
@@ -28,8 +31,6 @@ import com.udacity.project4.databinding.FragmentSaveReminderBinding
 import com.udacity.project4.locationreminders.geofence.GeofenceBroadcastReceiver
 import com.udacity.project4.locationreminders.geofence.GeofenceConstants.ACTION_GEOFENCE_EVENT
 import com.udacity.project4.locationreminders.geofence.GeofenceConstants.GEOFENCE_RADIUS_IN_METERS
-import com.udacity.project4.locationreminders.geofence.GeofenceConstants.REQUEST_CODE_BACKGROUND_PERMISSION
-import com.udacity.project4.locationreminders.geofence.GeofenceConstants.REQUEST_TURN_DEVICE_LOCATION_ON
 import com.udacity.project4.locationreminders.reminderslist.ReminderDataItem
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
@@ -75,7 +76,7 @@ class SaveReminderFragment : BaseFragment() {
             )
         }
 
-        binding.saveReminder.setOnClickListener { presaveCheck() }
+        binding.saveReminder.setOnClickListener { preSaveCheck() }
     }
 
     override fun onDestroy() {
@@ -84,7 +85,7 @@ class SaveReminderFragment : BaseFragment() {
         _viewModel.onClear()
     }
 
-    private fun presaveCheck() {
+    private fun preSaveCheck() {
         val title = _viewModel.reminderTitle.value
         val description = _viewModel.reminderDescription.value
         val location = _viewModel.reminderSelectedLocationStr.value
@@ -93,27 +94,84 @@ class SaveReminderFragment : BaseFragment() {
         val reminder = ReminderDataItem(title, description, location, latitude, longitude)
 
         if (_viewModel.validateEnteredData(reminder)) {
+            // If the device is not Android Q or later, the location permission asked in SelectLocation is enough
+            // we have no permission to worry about, and we can proceed.
+            if (!runningQOrLater) {
+                checkPermissionStartGeofenceAndSave(reminder)
+                return
+            }
+
+            // This is for Android Q or later.
             // Under SelectRemainderLocation, we have already forced user to grant fine location permission when saving the location
             // Here when user clicks Save, again we need the user to grant background location in order to save this remainder
-            if (foregroundBackgroundLocationPermissionApproved()) {
-                Log.d(TAG, "presaveCheck - backgroundLocationPermissionApproved")
-                saveReminderAndStartGeofence(reminder)
-            } else {
-                Log.d(TAG, "presaveCheck - requestBackgroundLocationPermissions")
-                requestForegroundBackgroundLocationPermissions()
+            when {
+                ContextCompat.checkSelfPermission(
+                    requireContext(),
+                    Manifest.permission.ACCESS_BACKGROUND_LOCATION
+                )
+                        == PackageManager.PERMISSION_GRANTED -> {
+                    // You can use the API that requires the permission.
+                    checkPermissionStartGeofenceAndSave(reminder)
+                }
+                shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_BACKGROUND_LOCATION) -> {
+                    // In an educational UI, explain to the user why your app requires this
+                    // permission for a specific feature to behave as expected. In this UI,
+                    // include a "cancel" or "no thanks" button that allows the user to
+                    // continue using your app without granting the permission.
+                    showRationaleDialog()
+                }
+                else -> {
+                    // You can directly ask for the permission.
+                    // The registered ActivityResultCallback gets the result of this request.
+                    requestBackgroundPermissionPermissionLauncher.launch(Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                }
             }
         }
     }
 
-    private fun saveReminderAndStartGeofence(reminder: ReminderDataItem) {
-        // Use the user entered reminder details to:
-        //  1) add a geofencing request
-        //  2) save the reminder to the local db
-        _viewModel.saveReminder(reminder)
-        startGeofence(reminder)
+    private fun showRationaleDialog() {
+        val builder: AlertDialog.Builder = AlertDialog.Builder(requireContext())
+        builder.setTitle(R.string.location_required_error)
+            .setMessage(R.string.permission_denied_explanation_background)
+            .setPositiveButton(getString(R.string.understood)) { it, _ ->
+                it.dismiss()
+            }
+            .setNegativeButton(R.string.settings) { _, _ ->
+                startActivity(Intent().apply {
+                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
+            }
+        builder.create().show()
     }
 
-    private fun startGeofence(reminder: ReminderDataItem, resolve: Boolean = true) {
+    // Register the permissions callback, which handles the user's response to the
+    // system permissions dialog. Save the return value, an instance of
+    // ActivityResultLauncher. You can use either a val, as shown in this snippet,
+    // or a lateinit var in your onAttach() or onCreate() method.
+    private val requestBackgroundPermissionPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            if (isGranted) {
+                // Permission is granted. Continue the action or workflow in your
+                // app.
+                preSaveCheck()
+            } else {
+                // Explain to the user that the feature is unavailable because the
+                // features requires a permission that the user has denied. At the
+                // same time, respect the user's decision. Don't link to system
+                // settings in an effort to convince the user to change their
+                // decision.
+                showRationaleDialog()
+            }
+        }
+
+    private fun checkPermissionStartGeofenceAndSave(
+        reminder: ReminderDataItem,
+        resolve: Boolean = true
+    ) {
         val locationRequest = LocationRequest.create().apply {
             priority = LocationRequest.PRIORITY_LOW_POWER
         }
@@ -124,21 +182,22 @@ class SaveReminderFragment : BaseFragment() {
             settingsClient.checkLocationSettings(locationSettingRequestsBuilder.build())
 
         locationSettingsResponseTask.addOnFailureListener { exception ->
+
             if (exception is ResolvableApiException && resolve) {
                 try {
-                    exception.startResolutionForResult(
-                        requireActivity(),
-                        REQUEST_TURN_DEVICE_LOCATION_ON
-                    )
+                    val intentSenderRequest =
+                        IntentSenderRequest.Builder(exception.resolution).build()
+                    // restart again
+                    resultLauncher.launch(intentSenderRequest)
                 } catch (sendEx: IntentSender.SendIntentException) {
                     Log.d(TAG, "Error getting location settings resolution: " + sendEx.message)
                 }
             } else {
                 Snackbar.make(
                     this.requireView(),
-                    R.string.permission_denied_explanation_background, Snackbar.LENGTH_INDEFINITE
+                    R.string.location_required_error, Snackbar.LENGTH_INDEFINITE
                 ).setAction(android.R.string.ok) {
-                    requestForegroundBackgroundLocationPermissions()
+                    checkPermissionStartGeofenceAndSave(reminder)
                 }.show()
             }
         }
@@ -150,6 +209,14 @@ class SaveReminderFragment : BaseFragment() {
         }
     }
 
+    private val resultLauncher = registerForActivityResult(
+        ActivityResultContracts.StartIntentSenderForResult()
+    ) { result ->
+        if (result.resultCode == RESULT_OK) {
+            preSaveCheck()
+        }
+    }
+    
     @SuppressLint("MissingPermission")
     private fun addGeofence(reminder: ReminderDataItem) {
         if (reminder.longitude != null && reminder.latitude != null) {
@@ -184,85 +251,7 @@ class SaveReminderFragment : BaseFragment() {
             }
 
         }
+        // We save the reminder here. Finally.
         _viewModel.validateAndSaveReminder(reminder)
-    }
-
-    /*
-     *  Permission related codes
-     *  Determines whether the app has the appropriate permissions across Android 10+ and all other
-     *  Android versions.
-     *
-     *  Foreground location (ACCESS_FINE_LOCATION) has been checked and forced user to grant under SelectLocationFragment
-     *  if here it fails, mostly it means user is on AndroidQ and only granted foreground location
-     */
-    @TargetApi(29)
-    private fun foregroundBackgroundLocationPermissionApproved(): Boolean {
-        val foregroundPermissionApproved = (PackageManager.PERMISSION_GRANTED ==
-                ActivityCompat.checkSelfPermission(
-                    requireContext(),
-                    Manifest.permission.ACCESS_FINE_LOCATION
-                ))
-        val backgroundPermissionApproved =
-            if (runningQOrLater) {
-                PackageManager.PERMISSION_GRANTED == ActivityCompat.checkSelfPermission(
-                    requireContext(), Manifest.permission.ACCESS_BACKGROUND_LOCATION
-                )
-            } else {
-                true
-            }
-        return foregroundPermissionApproved && backgroundPermissionApproved
-    }
-
-    /*
-    *  Requests ACCESS_FINE_LOCATION and (on Android 10+ (Q) ACCESS_BACKGROUND_LOCATION.
-    */
-    @TargetApi(29)
-    private fun requestForegroundBackgroundLocationPermissions() {
-        if (foregroundBackgroundLocationPermissionApproved())
-            return
-
-        // If not runningQOrLater, it should have been returned.
-        // This conditional statement can be redundant but check again just to be safe
-        // Since we have already requested for foreground permission when choosing location
-        // If we run into this problem, it means user chose to grant location while the app is running already
-        // For this we must redirect user back to the settings screen to make change
-        if (runningQOrLater) {
-            Snackbar.make(
-                this.requireView(),
-                R.string.permission_denied_explanation,
-                Snackbar.LENGTH_INDEFINITE
-            )
-                .setAction(R.string.settings) {
-                    startActivity(Intent().apply {
-                        action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                        data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                    })
-                }.show()
-        }
-    }
-
-    /*
-   * On Android 10+ (Q) we need to have the background permission.
-   * Since we call this as a part of the save action, if granted we continue to save
-   * Otherwise we showRationalDialog or show a snackbar
-   */
-    @TargetApi(29)
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        // Check if location permissions are granted and if so enable the
-        // location data layer.
-        if (requestCode == REQUEST_CODE_BACKGROUND_PERMISSION && grantResults.isNotEmpty()) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                presaveCheck()
-            } else if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                Log.d(TAG, "onRequestPermissionResult - Denied. Show Dialog again")
-                requestForegroundBackgroundLocationPermissions()
-            }
-        }
-        Log.d(TAG, "onRequestPermissionResult - Unchecked")
     }
 }
