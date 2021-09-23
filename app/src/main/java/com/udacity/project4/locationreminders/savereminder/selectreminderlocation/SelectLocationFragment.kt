@@ -2,7 +2,6 @@ package com.udacity.project4.locationreminders.savereminder.selectreminderlocati
 
 
 import android.Manifest
-import android.annotation.SuppressLint
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.content.res.Resources
@@ -11,8 +10,8 @@ import android.os.Bundle
 import android.provider.Settings
 import android.util.Log
 import android.view.*
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AlertDialog
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.databinding.DataBindingUtil
 import com.google.android.gms.location.LocationServices
@@ -21,13 +20,11 @@ import com.google.android.gms.maps.GoogleMap
 import com.google.android.gms.maps.OnMapReadyCallback
 import com.google.android.gms.maps.SupportMapFragment
 import com.google.android.gms.maps.model.*
-import com.google.android.material.snackbar.Snackbar
 import com.udacity.project4.BuildConfig
 import com.udacity.project4.R
 import com.udacity.project4.base.BaseFragment
 import com.udacity.project4.base.NavigationCommand
 import com.udacity.project4.databinding.FragmentSelectLocationBinding
-import com.udacity.project4.locationreminders.geofence.GeofenceConstants.REQUEST_CODE_LOCATION_PERMISSION
 import com.udacity.project4.locationreminders.savereminder.SaveReminderViewModel
 import com.udacity.project4.utils.setDisplayHomeAsUpEnabled
 import org.koin.android.ext.android.inject
@@ -167,47 +164,45 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
      * 2) User will be free to select a location or a POI no matter of the permission result
      * 3) When user clicks "Save", permission will be checked again.
      *    - If permission was previously rejected:
-     *      - If shouldShowRequestPermissionRationale == true, then show Rationale and ask again
-     *      - If shouldShowRequestPermissionRationale == false, a snackbar is shown,
-     *        bringing the user to the App settings dialog.
-     *    - User may go back without saving, or it must grant the permission in order to save.
+     *      User may go back without saving, or it must grant the permission in order to save.
      */
-    private fun isPermissionGranted(): Boolean {
-        return ContextCompat.checkSelfPermission(
-            requireContext(),
-            Manifest.permission.ACCESS_FINE_LOCATION
-        ) === PackageManager.PERMISSION_GRANTED
-    }
+    private fun enableMyLocation() {
+        when {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
+            )
+                    == PackageManager.PERMISSION_GRANTED -> {
+                // You can use the API that requires the permission.
+                map.isMyLocationEnabled = true
 
-    private fun requestPermissionOrShowRationale(shouldGoSetupIfFailed: Boolean) {
-        // Permission is not granted, and we need to decide if we have to explain further
-
-        // If user has denied previously, this will return true
-        if (shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION)) {
-            showRationaleDialog()
-        } else {
-            // Try to request it in the original way
-            Log.d(TAG, "requestPermissionOrShowRationale - Should not show Rationale")
-            if (shouldGoSetupIfFailed) {
-                Snackbar.make(
-                    this.requireView(),
-                    R.string.permission_denied_explanation,
-                    Snackbar.LENGTH_INDEFINITE
-                )
-                    .setAction(R.string.settings) {
-                        startActivity(Intent().apply {
-                            action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
-                            data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
-                            flags = Intent.FLAG_ACTIVITY_NEW_TASK
-                        })
-                    }.show()
-            } else {
-                // Try to request again. Note that if user chose Don't ask again, then
-                // onRequestPermissionsResult won't be called.
-                ActivityCompat.requestPermissions(
-                    requireActivity(),
-                    arrayOf<String>(Manifest.permission.ACCESS_FINE_LOCATION),
-                    REQUEST_CODE_LOCATION_PERMISSION
+                // Try to move to the last known location,
+                // Only if the user has not picked a location
+                if (selectedPoi == null) {
+                    val fusedLocationClient =
+                        LocationServices.getFusedLocationProviderClient(requireActivity())
+                    fusedLocationClient.lastLocation.addOnSuccessListener(requireActivity()) {
+                        if (it != null) {
+                            val lastKnownLatLng = LatLng(it.latitude, it.longitude)
+                            map.moveCamera(
+                                CameraUpdateFactory.newLatLngZoom(lastKnownLatLng, 15f)
+                            )
+                        }
+                    }
+                }
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) -> {
+                // In an educational UI, explain to the user why your app requires this
+                // permission for a specific feature to behave as expected. In this UI,
+                // include a "cancel" or "no thanks" button that allows the user to
+                // continue using your app without granting the permission.
+                showRationaleDialog()
+            }
+            else -> {
+                // You can directly ask for the permission.
+                // The registered ActivityResultCallback gets the result of this request.
+                myLocationRequestPermissionLauncher.launch(
+                    Manifest.permission.ACCESS_FINE_LOCATION
                 )
             }
         }
@@ -217,57 +212,43 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
         val builder: AlertDialog.Builder = AlertDialog.Builder(requireContext())
         builder.setTitle(R.string.location_required_error)
             .setMessage(R.string.permission_denied_explanation)
-            .setPositiveButton(R.string.OK) { _, _ ->
-                ActivityCompat.requestPermissions(
-                    requireActivity(),
-                    arrayOf<String>(Manifest.permission.ACCESS_FINE_LOCATION),
-                    REQUEST_CODE_LOCATION_PERMISSION
-                )
+            .setPositiveButton(getString(R.string.understood)) { it, _ ->
+                it.dismiss()
+            }
+            .setNegativeButton(R.string.settings) { _, _ ->
+                startActivity(Intent().apply {
+                    action = Settings.ACTION_APPLICATION_DETAILS_SETTINGS
+                    data = Uri.fromParts("package", BuildConfig.APPLICATION_ID, null)
+                    flags = Intent.FLAG_ACTIVITY_NEW_TASK
+                })
             }
         builder.create().show()
     }
 
-    @SuppressLint("MissingPermission")
-    private fun enableMyLocation() {
-        if (isPermissionGranted()) {
-            map.isMyLocationEnabled = true
-
-            // Try to move to the last known location,
-            // Only if the user has not picked a location
-            if (selectedPoi == null) {
-                val fusedLocationClient =
-                    LocationServices.getFusedLocationProviderClient(requireActivity())
-                fusedLocationClient.lastLocation.addOnSuccessListener(requireActivity()) {
-                    if (it != null) {
-                        val lastKnownLatLng = LatLng(it.latitude, it.longitude)
-                        map.moveCamera(
-                            CameraUpdateFactory.newLatLngZoom(lastKnownLatLng, 15f)
-                        )
-                    }
-                }
-            }
-        } else {
-            requestPermissionOrShowRationale(false)
-        }
-    }
-
-    override fun onRequestPermissionsResult(
-        requestCode: Int,
-        permissions: Array<String>,
-        grantResults: IntArray
-    ) {
-        // Check if location permissions are granted and if so enable the
-        // location data layer.
-        if (requestCode == REQUEST_CODE_LOCATION_PERMISSION && grantResults.isNotEmpty()) {
-            if (grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+    // Suggestion from mentor:
+    // https://developer.android.com/training/permissions/requesting#allow-system-manage-request-code
+    // Register the permissions callback, which handles the user's response to the
+    // system permissions dialog. Save the return value, an instance of
+    // ActivityResultLauncher. You can use either a val, as shown in this snippet,
+    // or a lateinit var in your onAttach() or onCreate() method.
+    val myLocationRequestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            Log.d(TAG, "myLocationRequestPermissionLauncher isGranted = {$isGranted}")
+            if (isGranted) {
+                // Permission is granted. Continue the action or workflow in your
+                // app.
                 enableMyLocation()
-            } else if (grantResults[0] == PackageManager.PERMISSION_DENIED) {
-                Log.d(TAG, "onRequest PermissionResult - Denied. Show Dialog again")
+            } else {
+                // Explain to the user that the feature is unavailable because the
+                // features requires a permission that the user has denied. At the
+                // same time, respect the user's decision. Don't link to system
+                // settings in an effort to convince the user to change their
+                // decision.
                 showRationaleDialog()
             }
         }
-        Log.d(TAG, "onRequest PermissionResult - Unchecked")
-    }
 
     /**
      * When the user confirms on the selected location,
@@ -278,19 +259,57 @@ class SelectLocationFragment : BaseFragment(), OnMapReadyCallback {
      * If ACCESS_FINE_LOCATION is not granted, we do not let user to save this position.
      */
     private fun onLocationSelected() {
-        if (isPermissionGranted()) {
-            _viewModel.latitude.value = selectedPoi!!.latLng.latitude
-            _viewModel.longitude.value = selectedPoi!!.latLng.longitude
-            _viewModel.reminderSelectedLocationStr.value = selectedPoi!!.name
-            _viewModel.selectedPOI.value = selectedPoi
-
-            _viewModel.navigationCommand.postValue(
-                NavigationCommand.Back
+        when {
+            ContextCompat.checkSelfPermission(
+                requireContext(),
+                Manifest.permission.ACCESS_FINE_LOCATION
             )
-        } else {
-            requestPermissionOrShowRationale(true)
+                    == PackageManager.PERMISSION_GRANTED -> {
+                // You can use the API that requires the permission.
+                _viewModel.latitude.value = selectedPoi!!.latLng.latitude
+                _viewModel.longitude.value = selectedPoi!!.latLng.longitude
+                _viewModel.reminderSelectedLocationStr.value = selectedPoi!!.name
+                _viewModel.selectedPOI.value = selectedPoi
+
+                _viewModel.navigationCommand.postValue(
+                    NavigationCommand.Back
+                )
+            }
+            shouldShowRequestPermissionRationale(Manifest.permission.ACCESS_FINE_LOCATION) -> {
+                // In an educational UI, explain to the user why your app requires this
+                // permission for a specific feature to behave as expected. In this UI,
+                // include a "cancel" or "no thanks" button that allows the user to
+                // continue using your app without granting the permission.
+                showRationaleDialog()
+            }
+            else -> {
+                // You can directly ask for the permission.
+                // The registered ActivityResultCallback gets the result of this request.
+                saveRequestPermissionLauncher.launch(
+                    Manifest.permission.ACCESS_FINE_LOCATION
+                )
+            }
         }
     }
+
+    val saveRequestPermissionLauncher =
+        registerForActivityResult(
+            ActivityResultContracts.RequestPermission()
+        ) { isGranted: Boolean ->
+            Log.d(TAG, "saveRequestPermissionLauncher isGranted = {$isGranted}")
+            if (isGranted) {
+                // Permission is granted. Continue the action or workflow in your
+                // app.
+                onLocationSelected()
+            } else {
+                // Explain to the user that the feature is unavailable because the
+                // features requires a permission that the user has denied. At the
+                // same time, respect the user's decision. Don't link to system
+                // settings in an effort to convince the user to change their
+                // decision.
+                showRationaleDialog()
+            }
+        }
 
     override fun onCreateOptionsMenu(menu: Menu, inflater: MenuInflater) {
         inflater.inflate(R.menu.map_options, menu)

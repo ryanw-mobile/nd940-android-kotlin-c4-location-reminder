@@ -42,4 +42,5 @@
     <string name="error_adding_geofence">Error Happened, Can\'t Add Geofence</string>
     <string name="OK">OK</string>
     <string name="permission_denied_explanation_background">You need to allow location all the time to run this app.</string>
+    <string name="understood">Understood</string>
 </resources>
